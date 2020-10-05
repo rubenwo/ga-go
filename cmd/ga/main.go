@@ -18,6 +18,11 @@ type organism struct {
 	badness          float64 // opposite of fitness, lower is better
 }
 
+//func (o organism) String() string {
+//	return fmt.Sprintf("genes:[%f, %f, %f, %f, %f, %f], badness: %f",
+//		o.a, o.b, o.c, o.d, o.e, o.f, o.badness)
+//}
+
 // performs a deep copy on an organism and returns a new organism with the same traits
 func (o *organism) Copy() *organism {
 	return &organism{
