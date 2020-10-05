@@ -80,17 +80,13 @@ func newRandomOrganism() *organism {
 	}
 }
 
-// Fit takes in xs (inputs) and ys (targets), then it calculates the predictions according to the formula:
-// ax^5 + bx^4 + cx^3 + dx^2 + ex + f
+// Fit takes in xs (inputs) and ys (targets), then it calculates the predictions according to the function:
+// f(x)=y. which is: ax^5 + bx^4 + cx^3 + dx^2 + ex + f in this case
 // then calculates the squared error, which is assigned to the badness (lower is better)
-func (o *organism) Fit(xs, ys []float64) {
+func (o *organism) Fit(xs, ys []float64, f func(x float64) float64) {
 	predictions := make([]float64, len(xs))
 	for i := 0; i < len(xs); i++ {
-		predictions[i] = o.a*math.Pow(xs[i], 5) +
-			o.b*math.Pow(xs[i], 4) +
-			o.c*math.Pow(xs[i], 3) +
-			o.d*math.Pow(xs[i], 2) +
-			o.e*xs[i] + o.f
+		predictions[i] = f(xs[i])
 	}
 
 	se := 0.0 // squared error
@@ -106,12 +102,10 @@ func bestOrganisms(organisms []*organism, limit int) []*organism {
 	sort.SliceStable(organisms, func(i, j int) bool {
 		return organisms[i].badness < organisms[j].badness
 	})
-
 	// return everything if the limit is higher than the amount of organisms
 	if len(organisms) <= limit {
 		return organisms
 	}
-
 	// return 0 - limit, which contain the best values since the slice is now ordered by badness low - high
 	return organisms[:limit]
 }
@@ -123,6 +117,7 @@ type data struct {
 }
 
 func main() {
+	///----Reading Data----///
 	f, err := os.Open("./assets/data.csv")
 	if err != nil {
 		log.Fatal(err)
@@ -155,15 +150,15 @@ func main() {
 		d.ys[idx] = y
 	}
 
+	///----Genetic Algorithm----///
 	population := 12000  // 12000 organisms in our population
 	limit := 10          // the limit of 'parents' that will be copied to the new generation
 	mutationRate := 0.3  // 30% of the new generation mutates (this is very high, but works great for this case)
 	learningRate := 0.01 // the rate the 'weights' change inside the organism when it's mutating. high overshoots, low takes longer to learn
 	lossThreshold := 0.5 // the loss threshold at which we want to end the learning loop, lower == better, but takes longer
 
-	concurrency := runtime.NumCPU()
-	batchSize := population / concurrency
-	fmt.Println(batchSize)
+	concurrency := runtime.NumCPU()       // number of concurrent jobs
+	batchSize := population / concurrency // size of each batch
 
 	organisms := make([]*organism, population)
 	for i := 0; i < len(organisms); i++ {
@@ -184,7 +179,13 @@ func main() {
 				defer wg.Done()
 				// 0 - batchSize for first batch
 				for _, o := range organisms[c*batchSize : c*batchSize+batchSize] {
-					o.Fit(d.xs, d.ys)
+					// function
+					f := func(x float64) float64 {
+						return o.a*math.Pow(x, 5) + o.b*math.Pow(x, 4) +
+							o.c*math.Pow(x, 3) + o.d*math.Pow(x, 2) +
+							o.e*x + o.f
+					}
+					o.Fit(d.xs, d.ys, f)
 				}
 			}(c)
 		}
